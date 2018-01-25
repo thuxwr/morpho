@@ -8,3 +8,4 @@ __version__ = pkg_resources.require("morpho")[0].version.split('-')[0]
 __commit__ = pkg_resources.require("morpho")[0].version.split('-')[-1]
 
 from . import Axon
+from . import Processor

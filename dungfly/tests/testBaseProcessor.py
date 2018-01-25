@@ -1,4 +1,5 @@
 from Axon.Component import *
+import BaseProcessor
 
 from Logger import GetLoggerStdErr, GetFormatter
 import logging, sys
@@ -19,120 +20,6 @@ default_processor_config = {
         }
 }
 
-class BaseProcessor(component):
-    
-    '''    
-    Definition of the BaseProcessor: all processors should inherit from this one
-    This base processor class defines the connections from slots to methods and to signals
-    Inbox = Slot
-    Outbox = Signal
-    '''
-    Inboxes = []
-    Outboxes = []
-    def __init__(self,processor_config):
-
-        logger.info("Initializing processor...")
-        self._processor_config = processor_config
-        self._name = self._processor_config['name']
-        self._queue_starter = self._processor_config['queue_starter']
-        self._activeSlots = self._getListActiveSlots()
-        self._activeSignals = self._getListActiveSignals()
-        self.Inboxes.extend(self._activeSlots) 
-        self.Outboxes.extend(self._activeSignals) 
-        logger.debug("Activating slots for {} <{}>: ".format(self._name,self.__class__.__name__) + str(self._activeSlots))
-        logger.debug("Activating signals for {} <{}>: ".format(self._name,self.__class__.__name__) + str(self._activeSignals))
-        super(BaseProcessor, self).__init__()
-        logger.info("Initialization of {} done".format(self._name))
-
-        logger.info("Configuring processor...")
-        self.configure()
-        logger.info("Configuration of {} done".format(self._name))
-
-    def configure(self):
-        '''
-        Configure the processor by assigning all the parameters of the configuration dictionary as variables of the object
-        '''
-        for key, value in self._processor_config.iteritems():
-            if key in  ["name", "queue_starter", "connections"]:
-                continue
-            setattr(self, "_" + key,value)
-
-    def _getListActiveSlots(self):
-        '''
-        Get the list of slots to activate (from processor_config)
-        '''
-        listActiveSlots = self._processor_config['connections']['slot']
-        if not isinstance(listActiveSlots,list):
-            return [listActiveSlots]
-        return listActiveSlots
-
-    def _getListActiveSignals(self):
-        '''
-        Get the list of signals to activate (from processor_config)
-        '''
-        listActiveSignals = self._processor_config['connections']['signal']
-        if not isinstance(listActiveSignals,list):
-            return [listActiveSignals]
-        return listActiveSignals
-
-    def _getMethodFromSlotName(self,name):
-        nameMethod = "slot_" + name
-        logger.debug("Trying to get {}".format(nameMethod))
-        try:
-            function = getattr(self, nameMethod)
-        except ImportError as e:
-            import inspect
-            listMethods = inspect.getmembers(self, predicate=inspect.ismethod)
-            logger.error("Couldn't find {} among:")
-            logger.error(listMethods)
-        return function
-
-    def _getMethodFromSignalName(self,name):
-        # try:
-        nameMethod = "signal_" + name
-        logger.debug("Trying to get {}".format(nameMethod))
-        try:
-            function = getattr(self, nameMethod)
-        except ImportError as e:
-            import inspect
-            listMethods = inspect.getmembers(self, predicate=inspect.ismethod)
-            logger.error("Couldn't find {} among:")
-            logger.error(listMethods)
-        return function
-
-    def _dataReadyOnSlots(self):
-        # Look if data are ready on the configured slots
-        isDataReady = False
-        listInboxes = []
-        for box in self._activeSlots.iteritems():
-            if self.dataReady(box):
-                isDataReady = True
-                listInboxes.append(box)
-        return isDataReady, listInboxes
-
-    def default(self, input = []):
-        logger.warning("Using Default Method of BaseProcessor class")
-        return input
-
-    def main(self):
-        listIntermediateObjects = {}
-        if not self._queue_starter:
-            keepLooping = True
-            while keepLooping:
-                isDataReady, listInboxes = self._dataReadyOnSlots()
-                print("isDataReady? " + str(isDataReady))
-                # if isDataReady:
-                yield 1
-        logger.debug("About to send signal")
-        for box in self._activeSignals:
-            method = self._getMethodFromSignalName(box)
-            self.send(method(listIntermediateObjects),box)
-        # self.send("prout","signal")
-        yield 1
-                
-        # while not self.dataReadyOnSlots("_input"):
-        #     yield 1
-        
 class MyFirstProcessor(BaseProcessor):
     
     '''
