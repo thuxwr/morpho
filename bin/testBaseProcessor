@@ -13,6 +13,7 @@ from __future__ import absolute_import
 
 from dungfly.Axon.Component import *
 from dungfly.Processor import BaseProcessor
+from dungfly.Processor.Examples import Printer
 
 from dungfly.Logger import GetLoggerStdErr, GetFormatter
 import logging, sys
@@ -23,16 +24,6 @@ logger = GetLoggerStdErr('BaseProcessor', GetFormatter(),
                            stderr_lb=logging.WARNING,
                            propagate=False)
 
-default_processor_config = {
-    "name": "testProcessor",
-    "queue_starter": True,
-    "connections":
-        {
-            "slot": "default",
-            "signal": ["type1","type2"]
-        }
-}
-
 class MyFirstProcessor(BaseProcessor):
     
     '''
@@ -42,7 +33,7 @@ class MyFirstProcessor(BaseProcessor):
     passed down to the BaseProcessor which will know which slots/signals to activate.
     '''
     
-    def __init__(self,processor_config=default_processor_config):
+    def __init__(self,*args,**kwargs):
         '''
         NB: this method should not be changed.
         Define the actual processor configuration e.g. connections between slots and signals the user is interested in.
@@ -64,42 +55,20 @@ class MyFirstProcessor(BaseProcessor):
             processor_param1: 1
             processor_param2: [ "blue", "white", "red" ]
         '''
-        super(MyFirstProcessor, self).__init__(processor_config)
+        super(MyFirstProcessor, self).__init__(*args,**kwargs)
 
 
     def slot_type1(self, input = {}):
-        logger.debug("I am method 1")
+        # logger.debug("I am method 1")
         return "I am method 1"
          
     def signal_type1(self, input = {}):
-        logger.debug("I am method 2")
+        # logger.debug("I am method 2")
         return "I am method 2"
 
     def signal_type2(self, input = {}):
-        logger.warning('hello I am method 3')
-        return "I am method 3"
-
-class Consumer(component):
-    Inboxes=["source"]
-    Outboxes=["result"]
-    def __init__(self):
-        super(Consumer, self).__init__()
-        self.count = 0
-        self.i = 5
-    def doSomething(self):
-        if self.dataReady("source"):
-            msg = self.recv("source")
-            logger.debug(self.name +  " Woo " + str(msg))
-            self.count = self.count +1
-        if self.count >=2:
-            self.send(self.count, "result")
-
-    def main(self):
-        yield 1
-        while(self.i):
-            self.i = self.i -1
-            self.doSomething()
-            yield 1
+        # logger.warning('hello I am method 3')
+        return ["I am method 3","test"]
 
 class testComponent(component):
     Inboxes=["_input"]
@@ -108,15 +77,15 @@ class testComponent(component):
         super(testComponent, self).__init__()
         prod_outboxes= ["result","result2"]
         self.producer = MyFirstProcessor()
-        self.consumer = Consumer()
+        self.consumer = Printer("myPrinter",False,{"slot":"source","signal": "printed_text"})
         # self.consumer2 = Consumer()
         # self.consumer3 = Consumer()
         # self.addChildren(self.producer, self.consumer)
-        self.link((self.producer, "type3"), (self.consumer, "source"))
+        self.link((self.producer, "type1"), (self.consumer, "source"))
         self.link((self.producer, "type2"), (self.consumer, "source"))
         # self.link((self.consumer, "result"), (self.consumer3, "source"))
         # self.link((self.producer, "result2"), (self.consumer, "source"))
-        self.link((self.consumer, "result"), (self, "_input"))
+        self.link((self.consumer, "printed_text"), (self, "_input"))
         self.addChildren(self.producer,self.consumer)
 
     def main(self):

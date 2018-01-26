@@ -9,16 +9,6 @@ logger = GetLoggerStdErr('BaseProcessor', GetFormatter(),
                            stderr_lb=logging.WARNING,
                            propagate=False)
 
-default_processor_config = {
-    "name": "testProcessor",
-    "queue_starter": True,
-    "connections":
-        {
-            "slot": "default",
-            "signal": ["type1","type2"]
-        }
-}
-
 class BaseProcessor(component):
     
     '''    
@@ -29,14 +19,22 @@ class BaseProcessor(component):
     '''
     Inboxes = []
     Outboxes = []
-    def __init__(self,processor_config):
+    def __init__(self, name = "testProcessor",
+                       queue_starter =True,
+                       connections = {"slot": "default",
+                                      "signal": ["type1","type2"]},
+                       *args,**kwargs):
 
         logger.info("Initializing processor...")
-        self._processor_config = processor_config
-        self._name = self._processor_config['name']
-        self._queue_starter = self._processor_config['queue_starter']
-        self._activeSlots = self._getListActiveSlots()
-        self._activeSignals = self._getListActiveSignals()
+        # if processor_config == {}:
+        #     self._processor_config = default_processor_config
+        # else:
+        #     self._processor_config = processor_config
+        self._name = name
+        self._queue_starter = queue_starter
+        self._connections = connections
+        # print(name,queue_starter,connections,args,kwargs)
+
         self.Inboxes.extend(self._activeSlots) 
         self.Outboxes.extend(self._activeSignals) 
         logger.debug("Activating slots for {} <{}>: ".format(self._name,self.__class__.__name__) + str(self._activeSlots))
@@ -45,66 +43,65 @@ class BaseProcessor(component):
         logger.info("Initialization of {} done".format(self._name))
 
         logger.info("Configuring processor...")
-        self.configure()
+        self.configure(**kwargs)
         logger.info("Configuration of {} done".format(self._name))
 
-    def configure(self):
+    def configure(self,config_dictionary={}):
         '''
         Configure the processor by assigning all the parameters of the configuration dictionary as variables of the object
         '''
-        for key, value in self._processor_config.iteritems():
+        for key, value in config_dictionary.iteritems():
             if key in  ["name", "queue_starter", "connections"]:
                 continue
             setattr(self, "_" + key,value)
 
-    def _getListActiveSlots(self):
+    @property
+    def _activeSlots(self):
         '''
         Get the list of slots to activate (from processor_config)
         '''
-        listActiveSlots = self._processor_config['connections']['slot']
+        listActiveSlots = self._connections['slot']
         if not isinstance(listActiveSlots,list):
             return [listActiveSlots]
         return listActiveSlots
 
-    def _getListActiveSignals(self):
+    @property
+    def _activeSignals(self):
         '''
         Get the list of signals to activate (from processor_config)
         '''
-        listActiveSignals = self._processor_config['connections']['signal']
+        listActiveSignals = self._connections['signal']
         if not isinstance(listActiveSignals,list):
             return [listActiveSignals]
         return listActiveSignals
 
     def _getMethodFromSlotName(self,name):
         nameMethod = "slot_" + name
-        logger.debug("Trying to get {}".format(nameMethod))
+        # logger.debug("Trying to get {}".format(nameMethod))
         try:
             function = getattr(self, nameMethod)
-        except ImportError as e:
-            import inspect
-            listMethods = inspect.getmembers(self, predicate=inspect.ismethod)
-            logger.error("Couldn't find {} among:")
-            logger.error(listMethods)
+        except:
+            logger.error("Couldn't find {}: using default".format(nameMethod))
+            return self.default
         return function
 
     def _getMethodFromSignalName(self,name):
         # try:
         nameMethod = "signal_" + name
-        logger.debug("Trying to get {}".format(nameMethod))
+        # logger.debug("Trying to get {}".format(nameMethod))
         try:
             function = getattr(self, nameMethod)
-        except ImportError as e:
-            import inspect
-            listMethods = inspect.getmembers(self, predicate=inspect.ismethod)
-            logger.error("Couldn't find {} among:")
-            logger.error(listMethods)
+        except :
+            logger.error("Couldn't find {}: using default".format(nameMethod))
+            return self.default
         return function
 
     def _dataReadyOnSlots(self):
         # Look if data are ready on the configured slots
         isDataReady = False
         listInboxes = []
-        for box in self._activeSlots.iteritems():
+        # print(self._activeSlots)
+        for box in self._activeSlots:
             if self.dataReady(box):
                 isDataReady = True
                 listInboxes.append(box)
@@ -120,29 +117,12 @@ class BaseProcessor(component):
             keepLooping = True
             while keepLooping:
                 isDataReady, listInboxes = self._dataReadyOnSlots()
-                print("isDataReady? " + str(isDataReady))
-                # if isDataReady:
+                # print("isDataReady? " + str(isDataReady))
+                if isDataReady:
+                    keepLooping = False
                 yield 1
-        logger.debug("About to send signal")
+        logger.debug("{}: About to send signal".format(self._name))
         for box in self._activeSignals:
             method = self._getMethodFromSignalName(box)
             self.send(method(listIntermediateObjects),box)
-        # self.send("prout","signal")
         yield 1
-                
-        # while not self.dataReadyOnSlots("_input"):
-        #     yield 1
-        
-
-# myFirstProcessor = MyFirstProcessor()
-# myFirstProcessor.main()
-# print(myFirstProcessor._getMethodFromSignalName("signal"))
-# print(myFirstProcessor._getMethodFromSignalName("signal")())
-
-# def getObjAsList(obj):
-#     if not isinstance(obj,list):
-#         return [obj]
-#     else:
-#         return obj
-# print(getObjAsList(1))
-# print(getObjAsList([1,2]))
