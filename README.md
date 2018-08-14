@@ -130,6 +130,8 @@ Connections between processors are made by setting a internal varible of a proce
 Examples of such python scripts can be found in the examples folder.
 
 
-## Documentation
+## Documentation and help
 
-Hosted at http://www.project8.org/morpho.
+Documentation hosted at http://morpho.readthedocs.org/.
+
+You can also join on [Slack](morphoorg.slack.com) and ask us.
