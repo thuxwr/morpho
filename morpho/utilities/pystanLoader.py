@@ -59,4 +59,25 @@ def extract_data_from_outputdata(conf, theOutput):
                 theOutputData[iEvents][iChain][len(theOutput.flatnames)])
             theOutputDataDict["is_sample"].append(
                 0 if iEvents < conf['warmup'] else 1)
+
+    # Add all stan summaries in output dictionary
+    mean = {}
+    se_mean = {}
+    sd = {}
+    n_eff = {}
+    Rhat = {}
+    for iKey, key in enumerate(flatnames):
+        if key in desired_var:
+            mean[str(key)] = theOutput.summary(pars=str(key))['summary'][0][0]
+            se_mean[str(key)] = theOutput.summary(pars=str(key))['summary'][0][1]
+            sd[str(key)] = theOutput.summary(pars=str(key))['summary'][0][2]
+            n_eff[str(key)] = theOutput.summary(pars=str(key))['summary'][0][8]
+            Rhat[str(key)] = theOutput.summary(pars=str(key))['summary'][0][9]
+
+    theOutputDataDict["mean"] = mean
+    theOutputDataDict["se_mean"] = se_mean
+    theOutputDataDict["sd"] = sd
+    theOutputDataDict["n_eff"] = n_eff
+    theOutputDataDict["Rhat"] = Rhat
+
     return theOutputDataDict

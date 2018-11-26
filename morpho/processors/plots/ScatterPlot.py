@@ -17,13 +17,20 @@ __all__.append(__name__)
 
 class ScatterPlot(BaseProcessor):
     '''
+    Scattering plot generator, x axis: posterior shrinkage; y axis: Z-score.
 
     Parameters:
         variables (required): name(s) of the variable in the data
-
+        width: window width (default=600)
+        height: window height (default=400)
+        output_path: where to save the plot
+        output_pformat: plot format (default=pdf)
 
     Input:
         data: list containing dictionaries for prior sampling result and all posterior sampling results.
+
+    Results:
+        None
     '''
 
     @property
