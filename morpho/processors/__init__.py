@@ -9,3 +9,4 @@ from . import IO
 from . import misc
 from . import plots
 from . import sampling
+from . import analysis 
